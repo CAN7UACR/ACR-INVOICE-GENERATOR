@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ACR Invoice">
+<meta name="theme-color" content="#CC0000">
+<title>ACR Invoice</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f2f2f7;color:#1c1c1e;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font-family:inherit;-webkit-appearance:none;appearance:none}
+
+/* SCREENS */
+.screen{display:none;min-height:100vh;flex-direction:column}
+#s-main{display:flex}
+
+/* TOPBAR */
+.topbar{background:#111;color:#fff;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;flex-shrink:0}
+.back-btn{background:none;border:none;color:#fff;font-size:26px;line-height:1;padding:4px 12px 4px 0;cursor:pointer}
+.tb-title{flex:1;font-size:15px;font-weight:700}
+.tb-title small{display:block;color:#CC0000;font-size:11px;font-weight:400;letter-spacing:.5px;margin-top:1px}
+.tb-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:7px 11px;border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;font-weight:600}
+.tb-btn:active{background:rgba(255,255,255,.3)}
+
+/* Logo in topbar */
+.topbar-logo{display:flex;align-items:center;gap:8px}
+.topbar-logo svg{flex-shrink:0}
+
+/* CONTENT AREA */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+
+/* CARDS — no overflow:hidden so dropdown isn't clipped */
+.card{background:#fff;margin:10px 10px 0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card-head{background:#111;color:#fff;padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-radius:12px 12px 0 0}
+.card-body{padding:14px 16px}
+
+/* FORM FIELDS */
+.frow{display:flex;gap:10px;margin-bottom:12px}
+.frow:last-child{margin-bottom:0}
+.f{flex:1;display:flex;flex-direction:column;gap:5px;position:relative;min-width:0}
+.f label{font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.3px}
+.f input,.f select,.f textarea{border:1.5px solid #ddd;border-radius:8px;padding:11px 13px;width:100%;background:#fafafa;color:#111;outline:none;font-size:15px}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#CC0000;background:#fff}
+.f textarea{min-height:68px;resize:vertical}
+
+/* ADDRESS DROPDOWN — z-index high so it floats above card */
+.addr-wrap{position:relative}
+.addr-drop{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #CC0000;border-top:none;border-radius:0 0 10px 10px;z-index:500;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.addr-opt{padding:11px 14px;font-size:13px;border-bottom:1px solid #f0f0f0;cursor:pointer;line-height:1.4}
+.addr-opt:active{background:#fff5f5}
+.addr-opt strong{display:block;color:#111}
+.addr-opt span{color:#888;font-size:12px}
+.addr-loading{padding:12px;font-size:13px;color:#aaa;text-align:center}
+
+/* ADD ITEM TYPE BUTTONS */
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 4px}
+.add-btn{background:#fff;border:2px solid #ddd;border-radius:12px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#555;cursor:pointer;min-height:72px}
+.add-btn:active{border-color:#CC0000;color:#CC0000;background:#fff5f5}
+.add-btn .ico{font-size:24px;line-height:1}
+
+/* ITEM CARDS */
+#item-list{padding:0 10px}
+.item-card{background:#fff;border-radius:10px;margin-bottom:8px;border:1.5px solid #eee;overflow:hidden}
+.item-top{background:#fafafa;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee}
+.item-badge{font-size:11px;font-weight:700;color:#CC0000;text-transform:uppercase}
+.item-del{background:none;border:none;color:#bbb;font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+.item-del:active{color:#CC0000}
+.item-info{padding:10px 12px 6px;font-size:14px;font-weight:700;line-height:1.4}
+.item-note{font-size:12px;color:#27ae60;font-weight:600;margin-top:2px}
+.item-price-row{display:flex;justify-content:space-between;align-items:center;padding:4px 12px 10px;font-size:13px;color:#888}
+.item-sub{font-weight:700;color:#CC0000;font-size:14px}
+.qty-ctrl{display:flex;align-items:center;gap:6px}
+.qty-btn{background:#f0f0f0;border:none;width:28px;height:28px;border-radius:8px;font-size:18px;font-weight:700;color:#333;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.qty-btn:active{background:#ddd}
+.qty-num{font-size:14px;font-weight:700;min-width:20px;text-align:center;color:#111}
+
+/* TAX TOGGLE CARD on main form */
+.tax-card{background:#fff;margin:10px 10px 0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tax-card-head{background:#333;color:#fff;padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;border-radius:12px 12px 0 0}
+.tax-card-body{padding:12px 16px}
+.tax-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+.tax-toggle-lbl{font-size:15px;font-weight:700;color:#333}
+.tax-toggle-sub{font-size:12px;color:#888;margin-top:1px}
+.tax-pct-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0}
+.tax-pct-row label{font-size:13px;font-weight:700;color:#555;flex:1}
+.tax-pct-inp{border:1.5px solid #ddd;border-radius:8px;padding:9px 12px;width:90px;text-align:right;font-size:16px;font-weight:700;background:#fafafa;outline:none}
+.tax-pct-inp:focus{border-color:#CC0000}
+
+/* TOTALS */
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+.tot-row:last-child{border:none}
+.tot-lbl{color:#666;font-weight:600}
+.tot-val{font-weight:700}
+.disc-inp{border:1.5px solid #ddd;border-radius:7px;padding:6px 10px;width:90px;text-align:right;font-weight:700;font-size:14px;background:#fafafa;outline:none}
+.disc-inp:focus{border-color:#CC0000}
+.tot-final{background:#CC0000;color:#fff;border-radius:10px;padding:14px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+.tot-final-lbl{font-size:17px;font-weight:900}
+.tot-final-val{font-size:22px;font-weight:900}
+
+/* TOGGLE SWITCH */
+.tog{position:relative;width:52px;height:30px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-sl{position:absolute;inset:0;background:#ccc;border-radius:15px;transition:.25s;cursor:pointer}
+.tog-sl:before{content:'';position:absolute;height:24px;width:24px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tog input:checked~.tog-sl{background:#27ae60}
+.tog input:checked~.tog-sl:before{transform:translateX(22px)}
+
+/* BIG BUTTONS */
+.btn-red{display:block;width:calc(100% - 20px);margin:12px 10px 0;background:#CC0000;color:#fff;border:none;border-radius:12px;padding:18px;font-size:17px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 14px rgba(204,0,0,.3)}
+.btn-red:active{background:#a80000}
+.btn-gray{display:block;width:calc(100% - 20px);margin:10px 10px 0;background:#eee;color:#555;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+.btn-gray:active{background:#ddd}
+
+/* INSTALL TOGGLE ROW */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:#fff;margin:10px 10px 0;border-radius:12px;padding:14px 16px;border:2px solid #ddd;cursor:pointer}
+.toggle-row.on{border-color:#27ae60;background:#f0fff4}
+.toggle-row label{font-size:14px;font-weight:700;color:#333;cursor:pointer;pointer-events:none}
+.toggle-row small{display:block;font-size:11px;color:#888;margin-top:2px;font-weight:400}
+
+/* SELECTION GRIDS */
+.sel-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 10px 0}
+.sel-btn{background:#fff;border:2px solid #ddd;border-radius:10px;padding:14px 8px;font-size:13px;font-weight:700;color:#333;cursor:pointer;text-align:center;line-height:1.3;min-height:58px;display:flex;align-items:center;justify-content:center}
+.sel-btn.on{border-color:#CC0000;background:#fff0f0;color:#CC0000}
+.sel-btn:active{border-color:#CC0000;color:#CC0000}
+.size-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 10px 0}
+.size-btn{background:#fff;border:2px solid #ddd;border-radius:10px;padding:14px 6px;font-size:13px;font-weight:700;color:#333;cursor:pointer;text-align:center;line-height:1.5}
+.size-btn.on{border-color:#CC0000;background:#fff0f0;color:#CC0000}
+.size-btn:active{border-color:#CC0000;color:#CC0000}
+
+/* LIST ROWS */
+.list-wrap{padding:10px 10px 0}
+.list-row{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid #ddd;border-radius:10px;margin-bottom:8px;padding:14px;cursor:pointer}
+.list-row.on{border-color:#CC0000;background:#fff0f0}
+.list-row:active{border-color:#CC0000;background:#fff0f0}
+.list-name{font-size:14px;font-weight:700;color:#111}
+.list-price{font-size:14px;font-weight:700;color:#CC0000}
+.list-var{font-size:12px;color:#aaa}
+
+/* PRICE & QTY INPUT */
+.pq-row{display:flex;gap:10px;padding:14px 10px 0}
+.pq-box{flex:1;display:flex;flex-direction:column;gap:5px}
+.pq-box label{font-size:11px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.3px}
+.pq-box input{border:1.5px solid #ddd;border-radius:8px;padding:11px 12px;font-size:16px;background:#fafafa;outline:none;width:100%;text-align:right}
+.pq-box input:focus{border-color:#CC0000;background:#fff}
+
+/* ── INVOICE SCREEN ── */
+#s-invoice{background:#fff;padding-bottom:0}
+#s-hist-inv{background:#fff;padding-bottom:0}
+.inv-toolbar{background:#111;padding:12px 10px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;gap:8px;position:sticky;top:0;z-index:100;flex-shrink:0;flex-wrap:wrap}
+.inv-tb{flex:1;border:none;border-radius:9px;padding:13px 6px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;min-width:60px}
+.inv-tb-back{background:#444}
+.inv-tb-print{background:#555}
+.inv-tb-share{background:#1a73e8}
+.inv-tb-pdf{background:#CC0000}
+.inv-tb-dup{background:#FF9500}
+.inv-body{padding:20px 22px 16px}
+.inv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px}
+.inv-logo-block{display:flex;flex-direction:column;align-items:flex-start}
+.inv-logo-sub{font-size:10px;font-weight:700;color:#555;letter-spacing:.5px;margin-top:3px;text-transform:uppercase}
+.inv-right{text-align:right}
+.inv-word{font-size:38px;font-weight:900;line-height:1;letter-spacing:-1px;color:#111}
+.inv-dtbl{margin-top:8px;font-size:12px;border-collapse:collapse}
+.inv-dtbl .dl{font-weight:700;color:#555;padding-right:10px;white-space:nowrap}
+.inv-dtbl .dv{border-bottom:1px solid #ccc;min-width:110px;padding:2px 0 2px 4px}
+.inv-divider{height:4px;background:#CC0000;border-radius:2px;margin:0 0 16px}
+.inv-to{border-left:5px solid #CC0000;padding:10px 14px;margin-bottom:16px;background:#fafafa;border-radius:0 8px 8px 0}
+.inv-to .tolbl{font-size:10px;font-weight:900;color:#CC0000;letter-spacing:1px;margin-bottom:3px;text-transform:uppercase}
+.inv-to .toname{font-size:15px;font-weight:900;margin-bottom:3px}
+.inv-to .toinfo{font-size:12px;color:#555;line-height:1.6}
+.inv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:14px}
+.inv-tbl thead tr{background:#CC0000;color:#fff}
+.inv-tbl thead th{padding:9px 8px;text-align:left;font-size:11px;letter-spacing:.5px}
+.inv-tbl thead th:not(:first-child){text-align:right}
+.inv-tbl tbody tr{border-bottom:1px solid #eee}
+.inv-tbl tbody tr:nth-child(even){background:#fafafa}
+.inv-tbl td{padding:9px 8px;vertical-align:top}
+.inv-tbl td:not(:first-child){text-align:right;vertical-align:middle;white-space:nowrap}
+.inv-inst{font-size:10px;color:#27ae60;font-weight:700;margin-top:2px}
+.inv-bot{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.inv-terms{flex:1;font-size:12px;min-width:160px}
+.inv-terms h4{font-size:13px;font-weight:900;margin-bottom:5px;color:#111}
+.inv-terms p{color:#444;line-height:1.6;margin-bottom:2px}
+.inv-contact{margin-top:10px;line-height:1.8;font-size:12px}
+.inv-contact .ci{color:#CC0000;margin-right:4px}
+.inv-ty{margin-top:10px;font-weight:900;font-size:12px}
+.inv-tots{min-width:210px}
+.inv-tr{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px solid #eee}
+.inv-tr .tl{color:#666;font-weight:700}
+.inv-tfinal{background:#CC0000;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border-radius:6px;margin-top:7px;font-weight:900;font-size:15px}
+.inv-sig{text-align:right;margin-top:14px;font-size:11px}
+.inv-sig-ln{border-top:1.5px solid #888;width:160px;margin-left:auto;margin-bottom:3px}
+.inv-sig-nm{font-weight:900;font-size:12px}
+.inv-sig-tl{color:#777}
+.inv-notes-box{background:#f9f9f9;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;line-height:1.6;color:#555}
+.inv-notes-lbl{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+
+/* HISTORY */
+.hist-stats{background:#CC0000;color:#fff;border-radius:12px;margin:10px 10px 0;padding:14px 10px;display:flex;gap:4px}
+.hist-stat{flex:1;text-align:center}
+.hist-stat .sn{font-size:19px;font-weight:800}
+.hist-stat .sl{font-size:10px;opacity:.85;margin-top:2px}
+.hist-search{display:block;width:calc(100% - 20px);margin:10px 10px 0;padding:12px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:15px;background:#fff;outline:none}
+.hist-search:focus{border-color:#CC0000}
+.hist-row{background:#fff;border-radius:10px;margin:8px 10px 0;padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.hist-row:active{background:#f5f5f5}
+.hist-num{font-size:13px;font-weight:700;color:#CC0000;min-width:70px;flex-shrink:0}
+.hist-info{flex:1;min-width:0}
+.hist-client{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-date{font-size:12px;color:#888;margin-top:1px}
+.hist-amount{font-size:15px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.hist-arrow{color:#ccc;font-size:18px;flex-shrink:0}
+.hist-empty{text-align:center;color:#aaa;padding:50px 20px}
+.hist-empty .ei{font-size:44px;margin-bottom:10px}
+
+/* SETTINGS TABS */
+.sett-tabs{display:flex;background:#fff;border-bottom:2px solid #f0f0f0;overflow-x:auto;flex-shrink:0}
+.sett-tab{padding:12px 14px;font-size:12px;font-weight:700;color:#888;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;flex-shrink:0}
+.sett-tab.active{color:#CC0000;border-bottom-color:#CC0000}
+.sett-section{display:none;flex:1;overflow-y:auto;padding:10px 0 40px}
+.sett-section.active{display:block}
+.sett-card{background:#fff;margin:10px 10px 0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sett-card-head{background:#f5f5f5;padding:10px 16px;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #eee}
+.sett-card-body{padding:14px 16px}
+.sett-field{margin-bottom:12px}
+.sett-field:last-child{margin-bottom:0}
+.sett-field label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:600}
+.sett-field input,.sett-field select{width:100%;padding:11px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:15px;color:#1c1c1e;background:#fafafa;outline:none}
+.sett-field input:focus,.sett-field select:focus{border-color:#CC0000;background:#fff}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.tog-row-lbl{font-size:15px;font-weight:600}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f5f5f5}
+.info-row:last-child{border:none}
+.info-lbl{font-size:14px}
+.info-val{font-size:14px;color:#888;font-weight:600}
+.sett-btn{display:block;width:calc(100% - 20px);margin:12px 10px 0;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center}
+.sett-btn-red{background:#CC0000;color:#fff}
+.sett-btn-red:active{background:#aa0000}
+.sett-btn-gray{background:#e5e5ea;color:#1c1c1e}
+.sett-btn-gray:active{background:#d0d0d7}
+.sett-btn-blue{background:#007AFF;color:#fff}
+.sett-btn-blue:active{background:#006de0}
+.sett-btn-danger{background:#FF3B30;color:#fff}
+.price-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.price-tbl th{background:#f5f5f5;padding:7px 4px;text-align:center;font-size:10px;color:#666;font-weight:700;text-transform:uppercase}
+.price-tbl th:first-child{text-align:left;padding-left:6px}
+.price-tbl td{padding:5px 4px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+.price-tbl td:first-child{font-weight:700;font-size:11px;word-break:break-word;padding-left:6px}
+.price-tbl input{width:62px;padding:5px 4px;border:1px solid #ddd;border-radius:6px;font-size:12px;text-align:right;font-family:inherit}
+.acc-price-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.acc-price-tbl th{background:#f5f5f5;padding:7px 8px;text-align:left;font-size:11px;color:#666;font-weight:700}
+.acc-price-tbl td{padding:7px 8px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+.acc-price-tbl td:first-child{font-weight:600}
+.acc-price-tbl input{width:80px;padding:6px 4px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:right;font-family:inherit}
+.warr-preview{background:#fff8f8;border-left:3px solid #CC0000;padding:10px 12px;border-radius:0 6px 6px 0;margin-top:12px;font-size:13px;color:#555;line-height:1.7}
+
+/* LOGO UPLOAD */
+.logo-ph{height:76px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:8px;color:#ccc;font-size:34px;border:2px dashed #ddd;margin-bottom:10px;overflow:hidden}
+.logo-ph img{max-height:72px;max-width:100%;object-fit:contain}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;white-space:nowrap;max-width:88vw;text-align:center;pointer-events:none}
+.toast.show{opacity:1}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:36px 16px;color:#aaa}
+.empty-state .ei{font-size:44px;margin-bottom:10px}
+
+/* PRINT */
+@media print{
+  .inv-toolbar{display:none!important}
+  body>*:not(#s-invoice){display:none!important}
+  #s-invoice{display:block!important}
+}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- ══════════════ SCREEN: MAIN ══════════════ -->
+<div id="s-main" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg width="44" height="30" viewBox="0 0 88 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="24" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="28" font-weight="900" fill="#CC0000" letter-spacing="-1">ACR</text>
+        <rect x="0" y="13" width="88" height="4" fill="#111"/>
+      </svg>
+    </div>
+    <div class="tb-title" style="font-size:13px">Products<small>A/C &amp; Mini Splits</small></div>
+    <button class="tb-btn" onclick="goTo('s-history')">📋</button>
+    <button class="tb-btn" onclick="goTo('s-settings')">⚙️</button>
+  </div>
+  <div class="content">
+
+    <!-- Client Info -->
+    <div class="card">
+      <div class="card-head">Client Information</div>
+      <div class="card-body">
+        <div class="frow">
+          <div class="f">
+            <label>Client Name *</label>
+            <input type="text" id="f-cname" placeholder="Full name" autocomplete="off">
+          </div>
+        </div>
+        <div class="frow">
+          <div class="f">
+            <label>Phone</label>
+            <input type="tel" id="f-cphone" placeholder="(xxx) xxx-xxxx" inputmode="tel">
+          </div>
+          <div class="f">
+            <label>Email</label>
+            <input type="email" id="f-cemail" placeholder="email@mail.com" inputmode="email">
+          </div>
+        </div>
+        <div class="frow">
+          <div class="f addr-wrap">
+            <label>Address</label>
+            <input type="text" id="f-caddr" placeholder="Start typing..." oninput="onAddr(this.value)" autocomplete="off">
+            <div class="addr-drop" id="addr-drop" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Info -->
+    <div class="card">
+      <div class="card-head">Invoice Details</div>
+      <div class="card-body">
+        <div class="frow">
+          <div class="f">
+            <label>Invoice #</label>
+            <input type="text" id="f-num" placeholder="INV-10051">
+          </div>
+          <div class="f">
+            <label>Date</label>
+            <input type="date" id="f-date">
+          </div>
+        </div>
+        <div class="frow">
+          <div class="f">
+            <label>Due Date</label>
+            <input type="date" id="f-due">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="card">
+      <div class="card-head">Items</div>
+      <div id="item-list">
+        <div class="empty-state" style="padding:24px 16px"><div class="ei">📦</div><p style="font-size:14px">No items yet — add one below</p></div>
+      </div>
+      <div class="add-grid">
+        <button class="add-btn" onclick="goTo('s-minisplit')"><span class="ico">🌬️</span>Mini-Split</button>
+        <button class="add-btn" onclick="goTo('s-accessory')"><span class="ico">🔧</span>Accessory</button>
+        <button class="add-btn" onclick="goTo('s-service')"><span class="ico">⚡</span>Service / Labor</button>
+        <button class="add-btn" onclick="goTo('s-custom')"><span class="ico">✏️</span>Custom Item</button>
+      </div>
+      <div style="height:10px"></div>
+    </div>
+
+    <!-- TAX TOGGLE (quick access on main form) -->
+    <div class="tax-card">
+      <div class="tax-card-head">Tax</div>
+      <div class="tax-card-body">
+        <div class="tax-toggle-row">
+          <div>
+            <div class="tax-toggle-lbl">Charge Tax</div>
+            <div class="tax-toggle-sub" id="tax-sub-label">Tax is OFF</div>
+          </div>
+          <label class="tog">
+            <input type="checkbox" id="q-tax-toggle" onchange="onTaxChange()">
+            <span class="tog-sl"></span>
+          </label>
+        </div>
+        <div id="q-tax-pct-wrap" style="display:none">
+          <div class="tax-pct-row">
+            <label>Tax Rate</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input class="tax-pct-inp" type="number" id="q-tax-pct" value="8" min="0" max="99" step="0.1" inputmode="decimal" onchange="onTaxChange()">
+              <span style="font-size:15px;font-weight:700;color:#555">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="card">
+      <div class="card-head">Totals</div>
+      <div class="card-body">
+        <div class="tot-row"><span class="tot-lbl">Subtotal</span><span class="tot-val" id="t-sub">$0.00</span></div>
+        <div class="tot-row">
+          <span class="tot-lbl">Discount ($)</span>
+          <input class="disc-inp" type="number" id="t-disc" value="0" min="0" step="0.01" inputmode="decimal" oninput="calcTotals()">
+        </div>
+        <div class="tot-row" id="tax-row" style="display:none"><span class="tot-lbl" id="tax-lbl">Tax (8%)</span><span class="tot-val" id="t-tax">$0.00</span></div>
+        <div class="tot-final"><span class="tot-final-lbl">TOTAL</span><span class="tot-final-val" id="t-total">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card">
+      <div class="card-head">Notes (Optional)</div>
+      <div class="card-body">
+        <div class="f"><textarea id="f-notes" placeholder="Installation notes, special instructions..."></textarea></div>
+      </div>
+    </div>
+
+    <button class="btn-red" onclick="genInvoice()">📄 GENERATE INVOICE</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: MINI-SPLIT ══════════════ -->
+<div id="s-minisplit" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Add Mini-Split<small>Select model &amp; size</small></div>
+  </div>
+  <div class="content">
+    <div class="card"><div class="card-head">Model</div>
+      <div class="sel-grid" id="model-grid"></div>
+      <div style="height:10px"></div>
+    </div>
+    <div class="card"><div class="card-head">Tonnage / Voltage</div>
+      <div class="size-grid" id="size-grid">
+        <button class="size-btn" id="sz0" onclick="doSelectSize(this,'1T 110V')">1 Ton<br>110V</button>
+        <button class="size-btn" id="sz1" onclick="doSelectSize(this,'1.5T 220V')">1.5 Ton<br>220V</button>
+        <button class="size-btn" id="sz2" onclick="doSelectSize(this,'2T 220V')">2 Ton<br>220V</button>
+        <button class="size-btn" id="sz3" onclick="doSelectSize(this,'3T 220V')">3 Ton<br>220V</button>
+      </div>
+      <div style="height:10px"></div>
+    </div>
+    <div class="toggle-row" id="inst-row" onclick="toggleInst()">
+      <label>✓ Include Installation<small>Toggle to add installation service</small></label>
+      <label class="tog"><input type="checkbox" id="inst-chk"><span class="tog-sl"></span></label>
+    </div>
+    <div class="pq-row">
+      <div class="pq-box"><label>Unit Price ($)</label><input type="number" id="ms-price" placeholder="0.00" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="pq-box"><label>Qty</label><input type="number" id="ms-qty" value="1" min="1" inputmode="numeric"></div>
+    </div>
+    <button class="btn-red" onclick="addMinisplit()">+ ADD TO INVOICE</button>
+    <button class="btn-gray" onclick="goTo('s-main')">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: ACCESSORY ══════════════ -->
+<div id="s-accessory" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Add Accessory</div>
+  </div>
+  <div class="content">
+    <div class="list-wrap" id="acc-list"></div>
+    <div class="pq-row">
+      <div class="pq-box"><label>Price ($)</label><input type="number" id="acc-price" placeholder="0.00" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="pq-box"><label>Qty</label><input type="number" id="acc-qty" value="1" min="1" inputmode="numeric"></div>
+    </div>
+    <button class="btn-red" onclick="addAccessory()">+ ADD TO INVOICE</button>
+    <button class="btn-gray" onclick="goTo('s-main')">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: SERVICE ══════════════ -->
+<div id="s-service" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Add Service / Labor</div>
+  </div>
+  <div class="content">
+    <div class="list-wrap" id="svc-list"></div>
+    <div class="pq-row">
+      <div class="pq-box"><label>Price ($)</label><input type="number" id="svc-price" placeholder="0.00" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="pq-box"><label>Qty</label><input type="number" id="svc-qty" value="1" min="1" inputmode="numeric"></div>
+    </div>
+    <button class="btn-red" onclick="addService()">+ ADD TO INVOICE</button>
+    <button class="btn-gray" onclick="goTo('s-main')">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: CUSTOM ITEM ══════════════ -->
+<div id="s-custom" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Custom Item</div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-head">Item Details</div>
+      <div class="card-body">
+        <div class="frow"><div class="f">
+          <label>Description *</label>
+          <input type="text" id="cust-desc" placeholder="Describe the item or service">
+        </div></div>
+        <div class="frow">
+          <div class="f"><label>Price ($)</label><input type="number" id="cust-price" placeholder="0.00" min="0" step="0.01" inputmode="decimal"></div>
+          <div class="f"><label>Qty</label><input type="number" id="cust-qty" value="1" min="1" inputmode="numeric"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-red" onclick="addCustom()">+ ADD TO INVOICE</button>
+    <button class="btn-gray" onclick="goTo('s-main')">Cancel</button>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: INVOICE PREVIEW ══════════════ -->
+<div id="s-invoice" class="screen">
+  <div class="inv-toolbar">
+    <button class="inv-tb inv-tb-back" onclick="newInvoice()">← New</button>
+    <button class="inv-tb inv-tb-pdf" onclick="downloadPDF()">⬇ PDF</button>
+    <button class="inv-tb inv-tb-share" onclick="shareInv()">↗ Share</button>
+    <button class="inv-tb inv-tb-print" onclick="window.print()">🖨 Print</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff">
+    <div id="inv-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: HISTORY ══════════════ -->
+<div id="s-history" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Invoice History</div>
+  </div>
+  <div class="content">
+    <div id="hist-stats" class="hist-stats">
+      <div class="hist-stat"><div class="sn">0</div><div class="sl">Invoices</div></div>
+      <div class="hist-stat"><div class="sn">$0</div><div class="sl">Revenue</div></div>
+      <div class="hist-stat"><div class="sn">$0</div><div class="sl">Average</div></div>
+    </div>
+    <input class="hist-search" id="hist-search" type="text" placeholder="🔍 Search by name or #..." oninput="searchHistory(this.value)">
+    <div id="history-list"></div>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: HISTORY INVOICE VIEW ══════════════ -->
+<div id="s-hist-inv" class="screen">
+  <div class="inv-toolbar">
+    <button class="inv-tb inv-tb-back" onclick="goTo('s-history')">← Back</button>
+    <button class="inv-tb inv-tb-pdf" onclick="downloadPDF()">⬇ PDF</button>
+    <button class="inv-tb inv-tb-share" onclick="shareInv()">↗ Share</button>
+    <button class="inv-tb inv-tb-print" onclick="window.print()">🖨 Print</button>
+    <button class="inv-tb inv-tb-dup" onclick="duplicateInvoice()">⧉ Dup</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff">
+    <div id="hist-inv-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN: SETTINGS ══════════════ -->
+<div id="s-settings" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-main')">‹</button>
+    <div class="tb-title">Settings ⚙️</div>
+  </div>
+  <div class="sett-tabs">
+    <div class="sett-tab active" onclick="switchTab('tab-biz',this)">Business</div>
+    <div class="sett-tab" onclick="switchTab('tab-warr',this)">Warranties</div>
+    <div class="sett-tab" onclick="switchTab('tab-tax',this)">Tax</div>
+    <div class="sett-tab" onclick="switchTab('tab-prices',this)">Prices</div>
+    <div class="sett-tab" onclick="switchTab('tab-info',this)">Info</div>
+  </div>
+
+  <!-- Tab: Business -->
+  <div class="sett-section active" id="tab-biz">
+    <div class="sett-card"><div class="sett-card-head">Logo</div><div class="sett-card-body">
+      <div class="logo-ph" id="logo-preview">
+        <svg viewBox="0 0 160 60" width="160" height="60">
+          <text x="4" y="48" font-family="-apple-system,sans-serif" font-size="52" font-weight="900" fill="#CC0000" letter-spacing="-2">ACR</text>
+          <rect x="0" y="26" width="165" height="8" fill="#f5f5f5"/>
+        </svg>
+      </div>
+      <button class="sett-btn sett-btn-gray" style="margin:0" onclick="document.getElementById('logo-file').click()">📷 Upload Logo (PNG/JPG)</button>
+      <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadLogo(this.files[0])">
+      <button class="sett-btn sett-btn-gray" style="margin-top:6px" onclick="removeLogo()">Remove Logo</button>
+    </div></div>
+    <div class="sett-card"><div class="sett-card-head">Business Information</div><div class="sett-card-body">
+      <div class="sett-field"><label>Business Name</label><input type="text" id="sett-bname"></div>
+      <div class="sett-field"><label>Your Name</label><input type="text" id="sett-oname"></div>
+      <div class="sett-field"><label>Phone</label><input type="tel" id="sett-phone"></div>
+      <div class="sett-field"><label>Email</label><input type="email" id="sett-email"></div>
+    </div></div>
+    <div class="sett-card"><div class="sett-card-head">Signature Block</div><div class="sett-card-body">
+      <div class="sett-field"><label>Signer Name</label><input type="text" id="sett-signame" placeholder="ALEJANDRO CANTU"></div>
+      <div class="sett-field"><label>Title</label><input type="text" id="sett-sigtitle" placeholder="COMPANY CEO"></div>
+    </div></div>
+    <button class="sett-btn sett-btn-red" onclick="saveBizSettings()">Save Business Info</button>
+  </div>
+
+  <!-- Tab: Warranties -->
+  <div class="sett-section" id="tab-warr">
+    <div class="sett-card"><div class="sett-card-head">Warranty Settings</div><div class="sett-card-body">
+      <div class="sett-field">
+        <label>Compressor &amp; Mechanical Parts</label>
+        <select id="sett-comp-w" onchange="updateWarrPreview()">
+          <option value="1">1 Year</option>
+          <option value="2" selected>2 Years</option>
+          <option value="5">5 Years</option>
+          <option value="10">10 Years</option>
+        </select>
+      </div>
+      <div class="sett-field">
+        <label>Board &amp; Controller</label>
+        <select id="sett-board-w" onchange="updateWarrPreview()">
+          <option value="3m" selected>3 Months</option>
+          <option value="6m">6 Months</option>
+          <option value="1">1 Year</option>
+        </select>
+      </div>
+      <div class="sett-field">
+        <label>Installation</label>
+        <select id="sett-inst-w" onchange="updateWarrPreview()">
+          <option value="6m">6 Months</option>
+          <option value="1" selected>1 Year</option>
+          <option value="2">2 Years</option>
+        </select>
+      </div>
+      <div class="warr-preview" id="warr-preview">Preview appears here</div>
+    </div></div>
+    <button class="sett-btn sett-btn-red" onclick="saveWarrantySettings()">Save Warranty Settings</button>
+  </div>
+
+  <!-- Tab: Tax -->
+  <div class="sett-section" id="tab-tax">
+    <div class="sett-card"><div class="sett-card-head">Tax Configuration</div><div class="sett-card-body">
+      <div class="tog-row">
+        <span class="tog-row-lbl">Include Tax on Invoices</span>
+        <label class="tog"><input type="checkbox" id="sett-tax-toggle" onchange="updateTaxField()"><span class="tog-sl"></span></label>
+      </div>
+      <div id="tax-pct-field" style="display:none;margin-top:12px">
+        <div class="sett-field"><label>Tax Percentage (%)</label><input type="number" id="sett-tax-pct" value="8" min="0" max="99" step="0.1" inputmode="decimal"></div>
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:#888;line-height:1.6">You can also toggle tax directly from the main screen.</p>
+    </div></div>
+    <button class="sett-btn sett-btn-red" onclick="saveTaxSettings()">Save Tax Settings</button>
+  </div>
+
+  <!-- Tab: Prices -->
+  <div class="sett-section" id="tab-prices">
+    <div class="sett-card"><div class="sett-card-head">Mini-Split Models ($ per size)</div>
+      <div class="sett-card-body" style="overflow-x:auto">
+        <table class="price-tbl" id="prices-models-tbl"></table>
+      </div>
+    </div>
+    <div class="sett-card" style="margin-top:10px"><div class="sett-card-head">Accessories</div>
+      <div class="sett-card-body">
+        <table class="acc-price-tbl" id="prices-acc-tbl"></table>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 10px;margin-top:12px">
+      <button class="sett-btn sett-btn-red" onclick="savePrices()" style="flex:2;margin:0">Save Prices</button>
+      <button class="sett-btn sett-btn-gray" onclick="resetPrices()" style="flex:1;margin:0">Reset</button>
+    </div>
+  </div>
+
+  <!-- Tab: Info -->
+  <div class="sett-section" id="tab-info">
+    <div class="sett-card"><div class="sett-card-head">Statistics</div><div class="sett-card-body">
+      <div class="info-row"><span class="info-lbl">Total Invoices</span><span class="info-val" id="info-total">0</span></div>
+      <div class="info-row"><span class="info-lbl">Last Invoice #</span><span class="info-val" id="info-last-num">—</span></div>
+      <div class="info-row"><span class="info-lbl">Total Revenue</span><span class="info-val" id="info-revenue">$0.00</span></div>
+    </div></div>
+    <div class="sett-card" style="margin-top:10px"><div class="sett-card-head">Data Management</div><div class="sett-card-body">
+      <div class="info-row"><span class="info-lbl">Invoice Counter</span>
+        <button style="background:none;border:none;color:#CC0000;font-size:13px;font-weight:700;cursor:pointer" onclick="resetCounter()">Reset to 0</button>
+      </div>
+    </div></div>
+    <button class="sett-btn sett-btn-blue" onclick="exportData()" style="margin-top:12px">📤 Export Backup</button>
+    <button class="sett-btn sett-btn-gray" onclick="document.getElementById('import-file').click()">📥 Import Backup</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this.files[0])">
+    <button class="sett-btn sett-btn-danger" onclick="clearAllHistory()">🗑 Clear All History</button>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   GLOBAL STATE
+════════════════════════════════════════ */
+var items = [];
+var uid = 0;
+var selModel = '';
+var selSize = '';
+var selAcc = '';
+var selSvc = '';
+var addrTimer = null;
+var addrResults = [];
+var histInvoiceData = null;
+var _modelNames = [];
+var _accNames = [];
+var _svcNames = [];
+var _priceModelNames = [];
+var _priceAccNames = [];
+var _priceSizes = ['1T 110V','1.5T 220V','2T 220V','3T 220V'];
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+window.onload = function() {
+  // Initialize localStorage structures
+  if (!localStorage.getItem('acr_settings')) {
+    localStorage.setItem('acr_settings', JSON.stringify({
+      businessName: 'ACR Products - A/C & Mini Splits',
+      ownerName: '',
+      phone: '+1(956)278-9769',
+      email: 'PRODUCTSACR@GMAIL.COM',
+      signerName: 'ALEJANDRO CANTU',
+      signerTitle: 'COMPANY CEO',
+      warranties: { compressor:'2', board:'3m', installation:'1' },
+      taxEnabled: false,
+      taxPercent: 8,
+      lastInvoiceNum: 10050,
+      logoUrl: null
+    }));
+  }
+  if (!localStorage.getItem('acr_prices')) {
+    localStorage.setItem('acr_prices', JSON.stringify(defaultPrices()));
+  }
+  if (!localStorage.getItem('acr_invoices')) {
+    localStorage.setItem('acr_invoices', JSON.stringify([]));
+  }
+
+  // Set today's date
+  var today = new Date();
+  document.getElementById('f-date').value = today.toISOString().split('T')[0];
+  var due = new Date(today); due.setDate(due.getDate()+30);
+  document.getElementById('f-due').value = due.toISOString().split('T')[0];
+
+  // Set auto invoice number
+  document.getElementById('f-num').value = peekNextNum();
+
+  // Populate all selection lists
+  populateModelGrid();
+  populateAccList();
+  populateSvcList();
+
+  // Sync main-form tax toggle from settings
+  syncMainTaxToggle();
+  calcTotals();
+
+  // Close addr dropdown on outside click or touch
+  function closeAddr(e) {
+    var drop = document.getElementById('addr-drop');
+    var inp = document.getElementById('f-caddr');
+    if (drop && inp && !inp.contains(e.target) && !drop.contains(e.target)) {
+      drop.style.display='none';
+    }
+  }
+  document.addEventListener('click', closeAddr);
+  document.addEventListener('touchstart', closeAddr, {passive:true});
+};
+
+function defaultPrices() {
+  return {
+    models: {
+      'MIRAGE LIFE 12+'      :{'1T 110V':1200,'1.5T 220V':1400,'2T 220V':1600,'3T 220V':1900},
+      'MIRAGE INVERTER X32'  :{'1T 110V':1300,'1.5T 220V':1500,'2T 220V':1700,'3T 220V':2000},
+      'MIRAGE INVERTER V32'  :{'1T 110V':1250,'1.5T 220V':1450,'2T 220V':1650,'3T 220V':1950},
+      'CONFORT R32 WIFI'     :{'1T 110V':1100,'1.5T 220V':1300,'2T 220V':1500,'3T 220V':1800},
+      'CONFORT R32'          :{'1T 110V':1050,'1.5T 220V':1250,'2T 220V':1450,'3T 220V':1750},
+      'CONFORT INVERTER WIFI':{'1T 110V':1150,'1.5T 220V':1350,'2T 220V':1550,'3T 220V':1850}
+    },
+    accessories: {
+      'WALL BRACKETS':60,
+      'LINE EXTENSION KIT (5M)':80,
+      'LINE EXTENSION KIT (10M)':150,
+      'PVC COVER (STRAIGHT)':50,
+      'PVC COVER':100
+    }
+  };
+}
+
+/* ════════════════════════════════════════
+   POPULATE LISTS (called on init + navigate)
+════════════════════════════════════════ */
+function populateModelGrid() {
+  var prices = JSON.parse(localStorage.getItem('acr_prices')||'{}');
+  _modelNames = Object.keys(prices.models||{});
+  var mgrid = document.getElementById('model-grid');
+  var mhtml = '';
+  _modelNames.forEach(function(m,i){
+    mhtml += '<button class="sel-btn" onclick="selModel_(this,'+i+')">'+m+'</button>';
+  });
+  mgrid.innerHTML = mhtml;
+}
+
+function populateAccList() {
+  var prices = JSON.parse(localStorage.getItem('acr_prices')||'{}');
+  _accNames = Object.keys(prices.accessories||{});
+  var alist = document.getElementById('acc-list');
+  var ahtml = '';
+  _accNames.forEach(function(name,i){
+    var price = prices.accessories[name]||0;
+    ahtml += '<div class="list-row" id="acc-row-'+i+'" onclick="selAcc_(this,'+i+','+price+')">'+
+      '<span class="list-name">'+name+'</span><span class="list-price">$'+price.toFixed(2)+'</span></div>';
+  });
+  alist.innerHTML = ahtml || '<p style="padding:20px;color:#aaa;text-align:center">No accessories. Add in Settings → Prices.</p>';
+}
+
+function populateSvcList() {
+  _svcNames = JSON.parse(localStorage.getItem('acr_services')||'null') ||
+    ['INSTALLATION LABOR','ELECTRICAL LABOR','ELECTRICAL MATERIAL','MANTENIMIENTO COMPLETO'];
+  if (!localStorage.getItem('acr_services')) {
+    localStorage.setItem('acr_services', JSON.stringify(_svcNames));
+  }
+  var slist = document.getElementById('svc-list');
+  var shtml = '';
+  _svcNames.forEach(function(name,i){
+    shtml += '<div class="list-row" id="svc-row-'+i+'" onclick="selSvc_(this,'+i+')">'+
+      '<div><div class="list-name">'+name+'</div><div class="list-var">Enter price below</div></div></div>';
+  });
+  slist.innerHTML = shtml;
+}
+
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(function(s){
+    s.style.display='none'; s.classList.remove('active');
+  });
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display='flex'; el.classList.add('active');
+
+  if (id==='s-minisplit') {
+    selModel=''; selSize=''; resetSelBtns();
+    populateModelGrid(); // refresh in case prices changed
+  }
+  if (id==='s-accessory') {
+    selAcc=''; resetAccRows();
+    populateAccList(); // refresh in case prices changed
+  }
+  if (id==='s-service')   { selSvc=''; resetSvcRows(); populateSvcList(); }
+  if (id==='s-history')   loadHistory();
+  if (id==='s-settings')  loadSettingsScreen();
+
+  el.scrollTop = 0;
+}
+
+function resetSelBtns(){
+  document.querySelectorAll('#model-grid .sel-btn').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('.size-btn').forEach(function(b){b.classList.remove('on');});
+  var chk=document.getElementById('inst-chk');
+  if(chk){chk.checked=false;}
+  var row=document.getElementById('inst-row');
+  if(row){row.classList.remove('on');}
+  document.getElementById('ms-price').value='';
+  document.getElementById('ms-qty').value='1';
+}
+function resetAccRows(){
+  document.querySelectorAll('#acc-list .list-row').forEach(function(r){r.classList.remove('on');});
+  document.getElementById('acc-price').value='';
+  document.getElementById('acc-qty').value='1';
+}
+function resetSvcRows(){
+  document.querySelectorAll('#svc-list .list-row').forEach(function(r){r.classList.remove('on');});
+  document.getElementById('svc-price').value='';
+  document.getElementById('svc-qty').value='1';
+}
+
+/* ════════════════════════════════════════
+   AUTO INVOICE NUMBER
+════════════════════════════════════════ */
+function peekNextNum() {
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  var n = (s.lastInvoiceNum||10050)+1;
+  return 'INV-'+String(n).padStart(5,'0');
+}
+function consumeNextNum() {
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  var n = (s.lastInvoiceNum||10050)+1;
+  s.lastInvoiceNum = n;
+  localStorage.setItem('acr_settings', JSON.stringify(s));
+  return 'INV-'+String(n).padStart(5,'0');
+}
+
+/* ════════════════════════════════════════
+   SELECTION HANDLERS
+════════════════════════════════════════ */
+function selModel_(btn, idx) {
+  document.querySelectorAll('#model-grid .sel-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  selModel = _modelNames[idx];
+  autofillPrice();
+}
+
+function doSelectSize(btn, size) {
+  document.querySelectorAll('.size-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  selSize = size;
+  autofillPrice();
+}
+
+function autofillPrice() {
+  if (!selModel || !selSize) return;
+  var prices = JSON.parse(localStorage.getItem('acr_prices')||'{}');
+  var p = ((prices.models||{})[selModel]||{})[selSize];
+  if (p) document.getElementById('ms-price').value = p;
+}
+
+function toggleInst() {
+  var chk = document.getElementById('inst-chk');
+  chk.checked = !chk.checked;
+  document.getElementById('inst-row').classList.toggle('on', chk.checked);
+}
+
+function selAcc_(row, idx, price) {
+  document.querySelectorAll('#acc-list .list-row').forEach(function(r){r.classList.remove('on');});
+  row.classList.add('on');
+  selAcc = _accNames[idx];
+  document.getElementById('acc-price').value = price;
+}
+
+function selSvc_(row, idx) {
+  document.querySelectorAll('#svc-list .list-row').forEach(function(r){r.classList.remove('on');});
+  row.classList.add('on');
+  selSvc = _svcNames[idx];
+}
+
+/* ════════════════════════════════════════
+   ADD ITEM FUNCTIONS
+════════════════════════════════════════ */
+function addMinisplit() {
+  if (!selModel) { showToast('Select a model first'); return; }
+  if (!selSize)  { showToast('Select a size first'); return; }
+  var price = parseFloat(document.getElementById('ms-price').value)||0;
+  if (!price)    { showToast('Enter the unit price'); return; }
+  var qty = parseInt(document.getElementById('ms-qty').value)||1;
+  var inst = document.getElementById('inst-chk').checked;
+  push({
+    type:'minisplit',
+    label: selModel+' — '+selSize,
+    note: inst ? 'Installation Included' : '',
+    price: price,
+    qty: qty
+  });
+  showToast('Mini-split added!');
+  goTo('s-main');
+}
+
+function addAccessory() {
+  if (!selAcc) { showToast('Select an accessory first'); return; }
+  var price = parseFloat(document.getElementById('acc-price').value)||0;
+  if (!price)  { showToast('Enter the price'); return; }
+  var qty = parseInt(document.getElementById('acc-qty').value)||1;
+  push({ type:'accessory', label:selAcc, note:'', price:price, qty:qty });
+  showToast('Accessory added!');
+  goTo('s-main');
+}
+
+function addService() {
+  if (!selSvc) { showToast('Select a service first'); return; }
+  var price = parseFloat(document.getElementById('svc-price').value)||0;
+  if (!price)  { showToast('Enter the price'); return; }
+  var qty = parseInt(document.getElementById('svc-qty').value)||1;
+  push({ type:'service', label:selSvc, note:'', price:price, qty:qty });
+  showToast('Service added!');
+  goTo('s-main');
+}
+
+function addCustom() {
+  var desc = document.getElementById('cust-desc').value.trim();
+  if (!desc) { showToast('Enter a description'); return; }
+  var price = parseFloat(document.getElementById('cust-price').value)||0;
+  if (!price) { showToast('Enter the price'); return; }
+  var qty = parseInt(document.getElementById('cust-qty').value)||1;
+  push({ type:'custom', label:desc, note:'', price:price, qty:qty });
+  document.getElementById('cust-desc').value='';
+  document.getElementById('cust-price').value='';
+  document.getElementById('cust-qty').value='1';
+  showToast('Item added!');
+  goTo('s-main');
+}
+
+function push(item) {
+  item.id = ++uid;
+  items.push(item);
+  renderItems();
+  calcTotals();
+}
+
+function delItem(id) {
+  items = items.filter(function(i){ return i.id!==id; });
+  renderItems();
+  calcTotals();
+}
+
+function changeQty(id, delta) {
+  var item = items.find(function(i){ return i.id===id; });
+  if (!item) return;
+  item.qty = Math.max(1, (item.qty||1) + delta);
+  renderItems();
+  calcTotals();
+}
+
+/* ════════════════════════════════════════
+   RENDER ITEMS
+════════════════════════════════════════ */
+function renderItems() {
+  var list = document.getElementById('item-list');
+  if (!items.length) {
+    list.innerHTML='<div class="empty-state" style="padding:24px 16px"><div class="ei">📦</div><p style="font-size:14px">No items yet — add one below</p></div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item){
+    var sub = (item.price*item.qty).toFixed(2);
+    html += '<div class="item-card">'+
+      '<div class="item-top">'+
+        '<span class="item-badge">'+item.type+'</span>'+
+        '<button class="item-del" onclick="delItem('+item.id+')">×</button>'+
+      '</div>'+
+      '<div class="item-info">'+item.label+
+        (item.note ? '<div class="item-note">✓ '+item.note+'</div>' : '')+
+      '</div>'+
+      '<div class="item-price-row">'+
+        '<span>$'+item.price.toFixed(2)+'</span>'+
+        '<div class="qty-ctrl">'+
+          '<button class="qty-btn" onclick="changeQty('+item.id+',-1)">−</button>'+
+          '<span class="qty-num">'+item.qty+'</span>'+
+          '<button class="qty-btn" onclick="changeQty('+item.id+',+1)">+</button>'+
+        '</div>'+
+        '<span class="item-sub">$'+sub+'</span>'+
+      '</div>'+
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+/* ════════════════════════════════════════
+   TAX TOGGLE (main form)
+════════════════════════════════════════ */
+function syncMainTaxToggle() {
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  var enabled = s.taxEnabled===true;
+  var pct = parseFloat(s.taxPercent)||8;
+  var tog = document.getElementById('q-tax-toggle');
+  var pctInp = document.getElementById('q-tax-pct');
+  var wrap = document.getElementById('q-tax-pct-wrap');
+  var sub = document.getElementById('tax-sub-label');
+  if(tog) tog.checked = enabled;
+  if(pctInp) pctInp.value = pct;
+  if(wrap) wrap.style.display = enabled ? 'block' : 'none';
+  if(sub) sub.textContent = enabled ? 'Tax: '+pct+'%' : 'Tax is OFF';
+}
+
+function onTaxChange() {
+  var enabled = document.getElementById('q-tax-toggle').checked;
+  var pct = parseFloat(document.getElementById('q-tax-pct').value)||8;
+  var wrap = document.getElementById('q-tax-pct-wrap');
+  var sub = document.getElementById('tax-sub-label');
+  if(wrap) wrap.style.display = enabled ? 'block' : 'none';
+  if(sub) sub.textContent = enabled ? 'Tax: '+pct+'%' : 'Tax is OFF';
+
+  // Save to settings immediately
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.taxEnabled = enabled;
+  s.taxPercent = pct;
+  localStorage.setItem('acr_settings', JSON.stringify(s));
+  calcTotals();
+}
+
+/* ════════════════════════════════════════
+   CALC TOTALS
+════════════════════════════════════════ */
+function calcTotals() {
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  var sub = items.reduce(function(a,i){ return a+i.price*i.qty; },0);
+  var disc = Math.max(0, parseFloat(document.getElementById('t-disc').value)||0);
+  disc = Math.min(disc, sub);
+  var taxEnabled = s.taxEnabled===true;
+  var taxPct = parseFloat(s.taxPercent)||8;
+  var tax = taxEnabled ? (sub-disc)*(taxPct/100) : 0;
+  var tot = sub-disc+tax;
+
+  document.getElementById('t-sub').textContent   = '$'+sub.toFixed(2);
+  document.getElementById('t-tax').textContent   = '$'+Math.max(0,tax).toFixed(2);
+  document.getElementById('t-total').textContent = '$'+Math.max(0,tot).toFixed(2);
+
+  var taxRow = document.getElementById('tax-row');
+  if (taxRow) taxRow.style.display = taxEnabled ? 'flex' : 'none';
+  var taxLbl = document.getElementById('tax-lbl');
+  if (taxLbl) taxLbl.textContent = 'Tax ('+taxPct+'%)';
+}
+
+/* ════════════════════════════════════════
+   GENERATE INVOICE
+════════════════════════════════════════ */
+function genInvoice() {
+  if (!items.length) { showToast('Add at least one item'); return; }
+  var cname = document.getElementById('f-cname').value.trim();
+  if (!cname) { showToast('Client name is required'); return; }
+
+  var invoiceNum = document.getElementById('f-num').value.trim();
+  var expectedNum = peekNextNum();
+  consumeNextNum();
+  if (!invoiceNum) invoiceNum = expectedNum;
+
+  var s = JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  var sub = items.reduce(function(a,i){ return a+i.price*i.qty; },0);
+  var disc = Math.max(0, parseFloat(document.getElementById('t-disc').value)||0);
+  disc = Math.min(disc, sub);
+  var taxEnabled = s.taxEnabled===true;
+  var taxPct = parseFloat(s.taxPercent)||8;
+  var tax = taxEnabled ? (sub-disc)*(taxPct/100) : 0;
+  var tot = sub-disc+tax;
+
+  var inv = {
+    id: Date.now(),
+    invoiceNum: invoiceNum,
+    date: document.getElementById('f-date').value,
+    dueDate: document.getElementById('f-due').value,
+    clientName: cname,
+    clientPhone: document.getElementById('f-cphone').value.trim(),
+    clientEmail: document.getElementById('f-cemail').value.trim(),
+    clientAddr: document.getElementById('f-caddr').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    items: JSON.parse(JSON.stringify(items)),
+    subtotal: sub,
+    discount: disc,
+    taxEnabled: taxEnabled,
+    taxPercent: taxPct,
+    tax: tax,
+    total: tot,
+    warranties: s.warranties||{compressor:'2',board:'3m',installation:'1'},
+    businessName: s.businessName||'ACR Products - A/C & Mini Splits',
+    businessPhone: s.phone||'+1(956)278-9769',
+    businessEmail: s.email||'PRODUCTSACR@GMAIL.COM',
+    signerName: s.signerName||'ALEJANDRO CANTU',
+    signerTitle: s.signerTitle||'COMPANY CEO',
+    logoUrl: s.logoUrl||null,
+    createdAt: new Date().toISOString()
+  };
+
+  // Save to history
+  var invoices = JSON.parse(localStorage.getItem('acr_invoices')||'[]');
+  invoices.push(inv);
+  localStorage.setItem('acr_invoices', JSON.stringify(invoices));
+
+  // Advance field for next invoice
+  document.getElementById('f-num').value = peekNextNum();
+
+  renderInvoicePage(inv, 'inv-content');
+  goTo('s-invoice');
+}
+
+function newInvoice() {
+  items=[];
+  document.getElementById('f-cname').value='';
+  document.getElementById('f-cphone').value='';
+  document.getElementById('f-cemail').value='';
+  document.getElementById('f-caddr').value='';
+  document.getElementById('f-notes').value='';
+  document.getElementById('t-disc').value='0';
+  document.getElementById('f-num').value = peekNextNum();
+  var today=new Date();
+  document.getElementById('f-date').value=today.toISOString().split('T')[0];
+  var due=new Date(today); due.setDate(due.getDate()+30);
+  document.getElementById('f-due').value=due.toISOString().split('T')[0];
+  renderItems();
+  calcTotals();
+  goTo('s-main');
+}
+
+/* ════════════════════════════════════════
+   RENDER INVOICE PAGE
+════════════════════════════════════════ */
+function logoHtml(logoUrl) {
+  if (logoUrl) {
+    return '<img src="'+logoUrl+'" style="max-height:60px;max-width:160px;object-fit:contain" alt="ACR Logo">';
+  }
+  // SVG approximation of ACR logo
+  return '<svg viewBox="0 0 160 60" width="160" height="60" xmlns="http://www.w3.org/2000/svg">'+
+    '<text x="2" y="50" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="54" font-weight="900" fill="#CC0000" letter-spacing="-3">ACR</text>'+
+    '<rect x="0" y="27" width="165" height="8" fill="white"/>'+
+  '</svg>';
+}
+
+function renderInvoicePage(inv, containerId) {
+  var rows='';
+  inv.items.forEach(function(item){
+    rows+='<tr>'+
+      '<td>'+item.label+(item.note?'<div class="inv-inst">✓ '+item.note+'</div>':'')+'</td>'+
+      '<td>$'+item.price.toFixed(2)+'</td>'+
+      '<td>'+item.qty+'</td>'+
+      '<td>$'+(item.price*item.qty).toFixed(2)+'</td>'+
+      '</tr>';
+  });
+  var empties = Math.max(0, Math.min(1, 3-inv.items.length));
+  for(var i=0;i<empties;i++) rows+='<tr><td>&nbsp;</td><td></td><td></td><td></td></tr>';
+
+  var warr = inv.warranties||{compressor:'2',board:'3m',installation:'1'};
+  function wText(v){ return v==='3m'?'3 months':v==='6m'?'6 months':v+' year'+(parseInt(v)>1?'s':''); }
+
+  var totsHtml='';
+  totsHtml+='<div class="inv-tr"><span class="tl">Subtotal</span><span>$'+inv.subtotal.toFixed(2)+'</span></div>';
+  if(inv.discount>0) totsHtml+='<div class="inv-tr"><span class="tl">Discount</span><span>−$'+inv.discount.toFixed(2)+'</span></div>';
+  if(inv.taxEnabled&&inv.tax>0) totsHtml+='<div class="inv-tr"><span class="tl">Tax ('+inv.taxPercent+'%)</span><span>$'+inv.tax.toFixed(2)+'</span></div>';
+  totsHtml+='<div class="inv-tfinal"><span>TOTAL DUE</span><span>$'+inv.total.toFixed(2)+'</span></div>';
+
+  var notesHtml = inv.notes
+    ? '<div class="inv-notes-box"><div class="inv-notes-lbl">Notes</div>'+inv.notes+'</div>'
+    : '';
+
+  var html =
+    '<div class="inv-body">'+
+    '<div class="inv-top">'+
+      '<div class="inv-logo-block">'+
+        logoHtml(inv.logoUrl)+
+        '<div class="inv-logo-sub">A/C &amp; Mini Splits</div>'+
+      '</div>'+
+      '<div class="inv-right">'+
+        '<div class="inv-word">INVOICE</div>'+
+        '<table class="inv-dtbl"><tbody>'+
+          '<tr><td class="dl">Invoice #</td><td class="dv">'+inv.invoiceNum+'</td></tr>'+
+          '<tr><td class="dl">Date</td><td class="dv">'+fmtD(inv.date)+'</td></tr>'+
+          (inv.dueDate?'<tr><td class="dl">Due</td><td class="dv">'+fmtD(inv.dueDate)+'</td></tr>':'')+
+        '</tbody></table>'+
+      '</div>'+
+    '</div>'+
+    '<div class="inv-divider"></div>'+
+    '<div class="inv-to">'+
+      '<div class="tolbl">Bill To</div>'+
+      '<div class="toname">'+inv.clientName+'</div>'+
+      '<div class="toinfo">'+
+        (inv.clientPhone?'📞 '+inv.clientPhone+'<br>':'')+
+        (inv.clientEmail?'✉ '+inv.clientEmail+'<br>':'')+
+        (inv.clientAddr||'')+
+      '</div>'+
+    '</div>'+
+    notesHtml+
+    '<table class="inv-tbl">'+
+      '<thead><tr><th>Description</th><th>Unit Price</th><th>Qty</th><th>Amount</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+    '<div class="inv-bot">'+
+      '<div class="inv-terms">'+
+        '<h4>WARRANTY</h4>'+
+        '<p>Board &amp; Controller: '+wText(warr.board||'3m')+'</p>'+
+        '<p>Compressor &amp; Mechanical: '+wText(warr.compressor||'2')+'</p>'+
+        '<p>Installation: '+wText(warr.installation||'1')+'</p>'+
+        '<div class="inv-contact">'+
+          '<span class="ci">📞</span>'+inv.businessPhone+'<br>'+
+          '<span class="ci">✉</span>'+inv.businessEmail+
+        '</div>'+
+        '<div class="inv-ty">Thank you for your business!</div>'+
+      '</div>'+
+      '<div class="inv-tots">'+totsHtml+
+        '<div class="inv-sig">'+
+          '<div class="inv-sig-ln"></div>'+
+          '<div class="inv-sig-nm">'+inv.signerName+'</div>'+
+          '<div class="inv-sig-tl">'+inv.signerTitle+'</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '</div>';
+
+  document.getElementById(containerId).innerHTML = html;
+}
+
+/* ════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════ */
+function loadHistory() {
+  var invoices = JSON.parse(localStorage.getItem('acr_invoices')||'[]');
+  var total = invoices.length;
+  var revenue = invoices.reduce(function(s,i){ return s+(i.total||0); },0);
+  var avg = total>0 ? revenue/total : 0;
+  document.getElementById('hist-stats').innerHTML =
+    '<div class="hist-stat"><div class="sn">'+total+'</div><div class="sl">Invoices</div></div>'+
+    '<div class="hist-stat"><div class="sn">$'+revenue.toFixed(0)+'</div><div class="sl">Revenue</div></div>'+
+    '<div class="hist-stat"><div class="sn">$'+avg.toFixed(0)+'</div><div class="sl">Average</div></div>';
+  document.getElementById('hist-search').value='';
+  renderHistList(invoices.slice().reverse());
+}
+
+function renderHistList(list) {
+  var c = document.getElementById('history-list');
+  if(!list.length){
+    c.innerHTML='<div class="hist-empty"><div class="ei">📋</div><p>No invoices yet</p></div>';
+    return;
+  }
+  var html='';
+  list.forEach(function(inv){
+    html+='<div class="hist-row" onclick="viewHistInvoice('+inv.id+')">'+
+      '<div class="hist-num">'+inv.invoiceNum+'</div>'+
+      '<div class="hist-info"><div class="hist-client">'+inv.clientName+'</div>'+
+      '<div class="hist-date">'+fmtD(inv.date)+'</div></div>'+
+      '<div class="hist-amount">$'+(inv.total||0).toFixed(2)+'</div>'+
+      '<div class="hist-arrow">›</div>'+
+      '</div>';
+  });
+  c.innerHTML=html;
+}
+
+function searchHistory(term) {
+  var invoices=JSON.parse(localStorage.getItem('acr_invoices')||'[]');
+  term=(term||'').toLowerCase().trim();
+  if(!term){ renderHistList(invoices.slice().reverse()); return; }
+  var f=invoices.filter(function(inv){
+    return inv.invoiceNum.toLowerCase().indexOf(term)>=0 ||
+           inv.clientName.toLowerCase().indexOf(term)>=0;
+  });
+  renderHistList(f.reverse());
+}
+
+function viewHistInvoice(id) {
+  var invoices=JSON.parse(localStorage.getItem('acr_invoices')||'[]');
+  var inv=invoices.find(function(i){ return i.id===id; });
+  if(!inv){ showToast('Invoice not found'); return; }
+  histInvoiceData=inv;
+  // Attach current logo if invoice doesn't have one
+  if (!inv.logoUrl) {
+    var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+    inv.logoUrl = s.logoUrl||null;
+  }
+  renderInvoicePage(inv,'hist-inv-content');
+  goTo('s-hist-inv');
+}
+
+function duplicateInvoice() {
+  if(!histInvoiceData) return;
+  var inv=histInvoiceData;
+  document.getElementById('f-cname').value=inv.clientName;
+  document.getElementById('f-cphone').value=inv.clientPhone||'';
+  document.getElementById('f-cemail').value=inv.clientEmail||'';
+  document.getElementById('f-caddr').value=inv.clientAddr||'';
+  document.getElementById('f-notes').value=inv.notes||'';
+  document.getElementById('t-disc').value='0';
+  items=JSON.parse(JSON.stringify(inv.items));
+  uid=items.reduce(function(mx,i){ return Math.max(mx,i.id); },0);
+  document.getElementById('f-num').value=peekNextNum();
+  var today=new Date();
+  document.getElementById('f-date').value=today.toISOString().split('T')[0];
+  var due=new Date(today); due.setDate(due.getDate()+30);
+  document.getElementById('f-due').value=due.toISOString().split('T')[0];
+  renderItems();
+  calcTotals();
+  showToast('Duplicated — edit and generate');
+  goTo('s-main');
+}
+
+/* ════════════════════════════════════════
+   SETTINGS
+════════════════════════════════════════ */
+function loadSettingsScreen() {
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  document.getElementById('sett-bname').value=s.businessName||'ACR Products - A/C & Mini Splits';
+  document.getElementById('sett-oname').value=s.ownerName||'';
+  document.getElementById('sett-phone').value=s.phone||'+1(956)278-9769';
+  document.getElementById('sett-email').value=s.email||'PRODUCTSACR@GMAIL.COM';
+  document.getElementById('sett-signame').value=s.signerName||'ALEJANDRO CANTU';
+  document.getElementById('sett-sigtitle').value=s.signerTitle||'COMPANY CEO';
+  document.getElementById('sett-comp-w').value=(s.warranties||{}).compressor||'2';
+  document.getElementById('sett-board-w').value=(s.warranties||{}).board||'3m';
+  document.getElementById('sett-inst-w').value=(s.warranties||{}).installation||'1';
+  updateWarrPreview();
+  document.getElementById('sett-tax-toggle').checked=s.taxEnabled===true;
+  document.getElementById('sett-tax-pct').value=s.taxPercent||8;
+  updateTaxField();
+  renderPricesTable();
+
+  // Logo preview
+  var ph=document.getElementById('logo-preview');
+  if(ph){
+    if(s.logoUrl){
+      ph.innerHTML='<img src="'+s.logoUrl+'" alt="Logo">';
+    } else {
+      ph.innerHTML='<svg viewBox="0 0 160 60" width="160" height="60">'+
+        '<text x="4" y="48" font-family="-apple-system,sans-serif" font-size="52" font-weight="900" fill="#CC0000" letter-spacing="-2">ACR</text>'+
+        '<rect x="0" y="26" width="165" height="8" fill="#f5f5f5"/>'+
+      '</svg>';
+    }
+  }
+
+  var invoices=JSON.parse(localStorage.getItem('acr_invoices')||'[]');
+  var revenue=invoices.reduce(function(a,i){ return a+(i.total||0); },0);
+  document.getElementById('info-total').textContent=invoices.length;
+  document.getElementById('info-last-num').textContent='INV-'+String(s.lastInvoiceNum||10050).padStart(5,'0');
+  document.getElementById('info-revenue').textContent='$'+revenue.toFixed(2);
+}
+
+function switchTab(tabId, el) {
+  document.querySelectorAll('.sett-section').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.sett-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById(tabId).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+function updateWarrPreview() {
+  function wt(v){ return v==='3m'?'3 months':v==='6m'?'6 months':v+' year'+(parseInt(v)>1?'s':''); }
+  var c=document.getElementById('sett-comp-w').value;
+  var b=document.getElementById('sett-board-w').value;
+  var inst=document.getElementById('sett-inst-w').value;
+  document.getElementById('warr-preview').innerHTML=
+    '<strong>Board &amp; Controller:</strong> '+wt(b)+'<br>'+
+    '<strong>Compressor &amp; Mechanical:</strong> '+wt(c)+'<br>'+
+    '<strong>Installation:</strong> '+wt(inst);
+}
+
+function updateTaxField() {
+  var on=document.getElementById('sett-tax-toggle').checked;
+  document.getElementById('tax-pct-field').style.display=on?'block':'none';
+}
+
+function saveBizSettings() {
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.businessName=document.getElementById('sett-bname').value||'ACR Products - A/C & Mini Splits';
+  s.ownerName=document.getElementById('sett-oname').value||'';
+  s.phone=document.getElementById('sett-phone').value||'+1(956)278-9769';
+  s.email=document.getElementById('sett-email').value||'PRODUCTSACR@GMAIL.COM';
+  s.signerName=document.getElementById('sett-signame').value||'ALEJANDRO CANTU';
+  s.signerTitle=document.getElementById('sett-sigtitle').value||'COMPANY CEO';
+  localStorage.setItem('acr_settings',JSON.stringify(s));
+  showToast('Business info saved!');
+}
+
+function saveWarrantySettings() {
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.warranties={
+    compressor:document.getElementById('sett-comp-w').value,
+    board:document.getElementById('sett-board-w').value,
+    installation:document.getElementById('sett-inst-w').value
+  };
+  localStorage.setItem('acr_settings',JSON.stringify(s));
+  showToast('Warranty settings saved!');
+}
+
+function saveTaxSettings() {
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.taxEnabled=document.getElementById('sett-tax-toggle').checked;
+  s.taxPercent=parseFloat(document.getElementById('sett-tax-pct').value)||8;
+  localStorage.setItem('acr_settings',JSON.stringify(s));
+  // Sync main form toggle
+  syncMainTaxToggle();
+  calcTotals();
+  showToast('Tax settings saved!');
+}
+
+function uploadLogo(file) {
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var dataUrl=e.target.result;
+    var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+    s.logoUrl=dataUrl;
+    localStorage.setItem('acr_settings',JSON.stringify(s));
+    var ph=document.getElementById('logo-preview');
+    if(ph) ph.innerHTML='<img src="'+dataUrl+'" alt="Logo">';
+    showToast('Logo saved!');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo() {
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.logoUrl=null;
+  localStorage.setItem('acr_settings',JSON.stringify(s));
+  var ph=document.getElementById('logo-preview');
+  if(ph) ph.innerHTML='<svg viewBox="0 0 160 60" width="160" height="60">'+
+    '<text x="4" y="48" font-family="-apple-system,sans-serif" font-size="52" font-weight="900" fill="#CC0000" letter-spacing="-2">ACR</text>'+
+    '<rect x="0" y="26" width="165" height="8" fill="#f5f5f5"/>'+
+  '</svg>';
+  showToast('Logo removed');
+}
+
+/* ════════════════════════════════════════
+   PRICES TABLE
+════════════════════════════════════════ */
+function renderPricesTable() {
+  var prices=JSON.parse(localStorage.getItem('acr_prices')||'{}');
+  var models=prices.models||{};
+  _priceModelNames=Object.keys(models);
+  var mHtml='<thead><tr><th>Model</th>';
+  _priceSizes.forEach(function(s){ mHtml+='<th>'+s+'</th>'; });
+  mHtml+='</tr></thead><tbody>';
+  _priceModelNames.forEach(function(name,mi){
+    mHtml+='<tr><td>'+name+'</td>';
+    _priceSizes.forEach(function(s,si){
+      var val=(models[name]||{})[s]||0;
+      mHtml+='<td><input type="number" class="price-inp" data-m="'+mi+'" data-s="'+si+'" value="'+val+'" inputmode="decimal"></td>';
+    });
+    mHtml+='</tr>';
+  });
+  mHtml+='</tbody>';
+  document.getElementById('prices-models-tbl').innerHTML=mHtml;
+
+  var accs=prices.accessories||{};
+  _priceAccNames=Object.keys(accs);
+  var aHtml='<thead><tr><th>Accessory</th><th>Price ($)</th></tr></thead><tbody>';
+  _priceAccNames.forEach(function(name,idx){
+    aHtml+='<tr><td>'+name+'</td><td><input type="number" class="acc-price-inp" data-idx="'+idx+'" value="'+(accs[name]||0)+'" inputmode="decimal"></td></tr>';
+  });
+  aHtml+='</tbody>';
+  document.getElementById('prices-acc-tbl').innerHTML=aHtml;
+}
+
+function savePrices() {
+  var prices=JSON.parse(localStorage.getItem('acr_prices')||'{}');
+  document.querySelectorAll('.price-inp').forEach(function(inp){
+    var mi=parseInt(inp.getAttribute('data-m'));
+    var si=parseInt(inp.getAttribute('data-s'));
+    var mName=_priceModelNames[mi]; var sName=_priceSizes[si];
+    if(mName&&sName){
+      if(!prices.models[mName]) prices.models[mName]={};
+      prices.models[mName][sName]=parseFloat(inp.value)||0;
+    }
+  });
+  document.querySelectorAll('.acc-price-inp').forEach(function(inp){
+    var idx=parseInt(inp.getAttribute('data-idx'));
+    var name=_priceAccNames[idx];
+    if(name) prices.accessories[name]=parseFloat(inp.value)||0;
+  });
+  localStorage.setItem('acr_prices',JSON.stringify(prices));
+  showToast('Prices saved!');
+}
+
+function resetPrices() {
+  if(!confirm('Reset prices to default values?')) return;
+  localStorage.setItem('acr_prices',JSON.stringify(defaultPrices()));
+  renderPricesTable();
+  showToast('Prices reset to defaults');
+}
+
+/* ════════════════════════════════════════
+   DATA MANAGEMENT
+════════════════════════════════════════ */
+function exportData() {
+  var backup={
+    exportDate:new Date().toISOString(), version:'2.0',
+    settings:JSON.parse(localStorage.getItem('acr_settings')||'{}'),
+    prices:JSON.parse(localStorage.getItem('acr_prices')||'{}'),
+    invoices:JSON.parse(localStorage.getItem('acr_invoices')||'[]')
+  };
+  var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='acr-backup-'+new Date().toISOString().split('T')[0]+'.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('Backup downloaded!');
+}
+
+function importData(file) {
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var b=JSON.parse(e.target.result);
+      if(!b.settings||!b.invoices){ showToast('Invalid backup file'); return; }
+      if(!confirm('Import data? This will overwrite all current data.')) return;
+      localStorage.setItem('acr_settings',JSON.stringify(b.settings));
+      if(b.prices) localStorage.setItem('acr_prices',JSON.stringify(b.prices));
+      localStorage.setItem('acr_invoices',JSON.stringify(b.invoices));
+      showToast('Imported! Reloading...');
+      setTimeout(function(){ location.reload(); },1500);
+    } catch(err){ showToast('Error reading file'); }
+  };
+  reader.readAsText(file);
+}
+
+function resetCounter() {
+  if(!confirm('Reset invoice counter? Next invoice will be INV-10051.')) return;
+  var s=JSON.parse(localStorage.getItem('acr_settings')||'{}');
+  s.lastInvoiceNum=10050;
+  localStorage.setItem('acr_settings',JSON.stringify(s));
+  document.getElementById('f-num').value=peekNextNum();
+  showToast('Counter reset!');
+  loadSettingsScreen();
+}
+
+function clearAllHistory() {
+  if(!confirm('Delete ALL invoice history? Cannot be undone.')) return;
+  localStorage.setItem('acr_invoices',JSON.stringify([]));
+  showToast('History cleared');
+  loadSettingsScreen();
+}
+
+/* ════════════════════════════════════════
+   PDF DOWNLOAD
+════════════════════════════════════════ */
+function downloadPDF() {
+  var activeScreen = document.querySelector('.screen.active');
+  var activeId = activeScreen ? activeScreen.id : '';
+  var content = activeId === 's-hist-inv'
+    ? document.getElementById('hist-inv-content')
+    : document.getElementById('inv-content');
+
+  if (!content || !content.innerHTML) {
+    showToast('No invoice to export');
+    return;
+  }
+
+  showToast('Generating PDF...');
+
+  // Get invoice number from rendered content for filename
+  var invNum = (content.querySelector('.dv') ? content.querySelector('.dv').textContent : 'invoice').replace(/\s/g,'');
+
+  var opt = {
+    margin: [8, 8, 8, 8],
+    filename: 'ACR_'+invNum+'.pdf',
+    image: { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(content).save().then(function(){
+    showToast('PDF ready!');
+  }).catch(function(){
+    showToast('PDF export failed — try Print');
+  });
+}
+
+/* ════════════════════════════════════════
+   SHARE
+════════════════════════════════════════ */
+function shareInv() {
+  var activeScreen = document.querySelector('.screen.active');
+  var activeId = activeScreen ? activeScreen.id : '';
+  var content = activeId === 's-hist-inv'
+    ? document.getElementById('hist-inv-content')
+    : document.getElementById('inv-content');
+
+  if (!content) { showToast('No invoice to share'); return; }
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'ACR Invoice',
+      text: content.innerText || 'ACR Invoice'
+    }).catch(function(){});
+  } else {
+    showToast('Use ⬇ PDF or 🖨 Print to share');
+  }
+}
+
+/* ════════════════════════════════════════
+   ADDRESS AUTOCOMPLETE
+════════════════════════════════════════ */
+function onAddr(q) {
+  var drop=document.getElementById('addr-drop');
+  clearTimeout(addrTimer);
+  if(!q||q.length<3){ drop.style.display='none'; return; }
+  drop.style.display='block';
+  drop.innerHTML='<div class="addr-loading">Searching...</div>';
+  addrTimer=setTimeout(function(){
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=us&q='+encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        addrResults=[];
+        if(!data.length){ drop.innerHTML='<div class="addr-loading">No results</div>'; return; }
+        var html='';
+        data.forEach(function(item,idx){
+          var parts=item.display_name.split(',');
+          var main=parts.slice(0,2).join(',').trim();
+          var rest=parts.slice(2,5).join(',').trim();
+          addrResults[idx]=parts.slice(0,4).join(',').trim();
+          html+='<div class="addr-opt" onclick="pickAddr('+idx+')"><strong>'+main+'</strong><span>'+rest+'</span></div>';
+        });
+        drop.innerHTML=html;
+      })
+      .catch(function(){ drop.innerHTML='<div class="addr-loading">Could not fetch</div>'; });
+  },500);
+}
+
+function pickAddr(idx) {
+  document.getElementById('f-caddr').value=addrResults[idx]||'';
+  document.getElementById('addr-drop').style.display='none';
+}
+
+/* ════════════════════════════════════════
+   UTILITIES
+════════════════════════════════════════ */
+function fmtD(d) {
+  if(!d) return '';
+  var p=d.split('-');
+  return p.length===3 ? p[1]+'/'+p[2]+'/'+p[0] : d;
+}
+
+function showToast(msg) {
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){ t.classList.remove('show'); },2500);
+}
+</script>
+</body>
+</html>
